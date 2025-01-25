@@ -18,7 +18,7 @@ const Tasks = () => {
   const twitterFollow = () => {
     setLoading(true)
     
-    const followUrl = `https://twitter.com/intent/follow?user_id=${process.env.TARGET_USER_ID}`
+    const followUrl = `https://twitter.com/intent/follow?user_id=${process.env.TWITTER_USER_ID}`
     const newPopup = window.open(followUrl, 'Follow', 'width=600,height=400')
     if (!newPopup) {
       setLoading(false)
@@ -31,7 +31,7 @@ const Tasks = () => {
   const checkFollowStatus = async () => {
     try {
       const response = await axios.post(`${process.env.NEXTAUTH_URL}/api/userFollow`, {
-        targetUserId: process.env.TARGET_USER_ID,
+        targetUserId: process.env.TWITTER_USER_ID,
         loggedInUserId: session?.user?.name
       })
 
