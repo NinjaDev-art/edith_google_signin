@@ -2,13 +2,7 @@ import NextAuth, { Account, Session } from "next-auth";
 import { JWT } from "next-auth/jwt";
 import TwitterProvider from "next-auth/providers/twitter";
 
-declare module "next-auth" {
-    interface Session {
-        userId: string;
-    }
-}
-
-export const authOptions = {
+const authOptions = {
     providers: [
         TwitterProvider({
             clientId: process.env.TWITTER_CLIENT_ID!,
@@ -29,6 +23,7 @@ export const authOptions = {
             account: Account | null
         }) {
             if (account) {
+                token.accessToken = account.access_token;
                 token.userId = account.providerAccountId;
             }
             return token;
@@ -37,13 +32,17 @@ export const authOptions = {
             session: Session,
             token: JWT
         }) {
-            session.userId = token.sub ?? "";
+            session.user = {
+                ...session.user,
+                name: token.sub ?? "",
+            };
             return session;
         },
     },
-    debug: true,
+    debug: process.env.NODE_ENV === "development",
     secret: process.env.NEXTAUTH_SECRET,
 };
 
 const handler = NextAuth(authOptions);
+
 export { handler as GET, handler as POST };

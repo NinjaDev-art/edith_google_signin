@@ -32,7 +32,7 @@ const Tasks = () => {
     try {
       const response = await axios.post(`${process.env.NEXTAUTH_URL}/api/userFollow`, {
         targetUserId: process.env.TARGET_USER_ID,
-        loggedInUserId: session?.userId
+        loggedInUserId: session?.user?.name
       })
 
       // Handle both 200 and 201 status codes
