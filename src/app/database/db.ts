@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const Schema = mongoose.Schema;
 
-mongoose.connect(process.env.MONGODB_URL || 'mongodb://localhost:27017/edith-miniapp')
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/edith-miniapp')
     .then(() => console.log('MongoDB connected'))
     .catch(err => console.error('MongoDB connection error:', err));
 mongoose.Promise = global.Promise;

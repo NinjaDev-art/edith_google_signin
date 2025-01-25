@@ -38,7 +38,7 @@ class UserController {
                 level: 0,
                 maxReferralDepth: process.env.MAX_REFERRAL_DEPTH,
                 twitterId: null,
-                targetId: process.env.TWITTER_USER_ID,
+                targetId: null,
                 followStatus: false,
             });
 
@@ -74,6 +74,7 @@ class UserController {
                 twitterId: user.twitterId,
                 targetId: user.targetId,
                 followStatus: user.followStatus,
+                referral_code: user.referral_code
             },
             level: {
                 current_level: level[0]?.level_id || 0,

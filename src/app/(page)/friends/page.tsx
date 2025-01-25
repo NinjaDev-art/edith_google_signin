@@ -18,8 +18,8 @@ const Friends = () => {
   }
 
   useEffect(() =>
-    setReferralCode(`https://t.me/edithsuperai_bot/edithAPP?startapp=${userActivities?.referralCode}`)
-    , [userActivities?.referralCode])
+    setReferralCode(`https://t.me/edithsuperai_bot/edithAPP?startapp=${userData?.referCode}`)
+    , [userData?.referCode])
 
   return (
     <main className="w-full min-h-screen bg-bgMain font-aeonik text-[#878787] homeBackground">

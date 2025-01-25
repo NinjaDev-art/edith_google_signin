@@ -81,7 +81,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
                         twitterId: data.user.twitterId ?? "",
                         targetId: data.user.targetId ?? "",
                         followStatus: data.user.followStatus ?? false,
-                        referCode: data.user.referralCode ?? "",
+                        referCode: data.user.referral_code ?? "",
                     });
                 }
             })
