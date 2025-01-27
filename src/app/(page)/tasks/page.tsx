@@ -5,7 +5,7 @@ import Modal from "@/app/components/Modal";
 import { useUser } from "@/app/context/UserContext";
 import axios from "axios";
 import Image from "next/image";
-import { signIn, useSession } from 'next-auth/react'
+import { useSession } from 'next-auth/react'
 
 const Tasks = () => {
   const { data: session, status } = useSession()
