@@ -2,22 +2,23 @@
 
 import { useEffect, useState } from "react";
 import Modal from "@/app/components/Modal";
+import TweetModal from "@/app/components/TweetModal";
 import { useUser } from "@/app/context/UserContext";
-import axios from "axios";
 import Image from "next/image";
-import { useSession } from 'next-auth/react'
+import { Task } from "@/app/lib/interface";
 
 const Tasks = () => {
-  const { data: session, status } = useSession()
-  const [typeTask, setTypeTask] = useState<number>(0);
+  const [typeTask, setTypeTask] = useState<string>("once");
   const [isOpen, setIsOpen] = useState(false);
+  const [isTweetOpen, setIsTweetOpen] = useState(false);
   const { userData, setUserData } = useUser();
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState<Window | null>(null);
+  const [earned, setEarned] = useState(0);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
   const twitterFollow = () => {
     setLoading(true)
-
     const followUrl = `https://twitter.com/intent/follow?user_id=${process.env.TWITTER_USER_ID}`
     const newPopup = window.open(followUrl, 'Follow', 'width=600,height=400')
     if (!newPopup) {
@@ -28,30 +29,37 @@ const Tasks = () => {
     setPopup(newPopup)
   }
 
-  const checkFollowStatus = async () => {
-    try {
-      const response = await axios.post(`${process.env.NEXTAUTH_URL}/api/userFollow`, {
-        targetUserId: process.env.TWITTER_USER_ID,
-        loggedInUserId: session?.user?.name
-      })
-
-      // Handle both 200 and 201 status codes
-      if (response.status >= 200 && response.status < 300) {
-        setUserData(prev => ({
-          ...prev,
-          followStatus: true,
-        }))
-      } else {
-        console.error('Follow check failed:', response.data)
-      }
-    } catch (err) {
-      console.error('Follow check error:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
+    const checkFollowStatus = async () => {
+      try {
+        const response = await fetch(`${process.env.NEXTAUTH_URL}/api/userFollow`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            targetUserId: process.env.TWITTER_USER_ID,
+            loggedInUserId: userData?.twitterId,
+            telegramId: userData?.user_id
+          })
+        })
+        const data = await response.json();
+
+        // Handle both 200 and 201 status codes
+        if (data.success) {
+          setUserData(data.user);
+          setEarned(data.activity.points);
+          setIsOpen(true);
+        } else {
+          console.error('Follow check failed:', data)
+        }
+      } catch (err) {
+        console.error('Follow check error:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     if (popup) {
       const interval = setInterval(() => {
         if (popup.closed) {
@@ -66,28 +74,31 @@ const Tasks = () => {
 
   const twitterLogin = () => {
     setLoading(true)
-    const followUrl = `${process.env.NEXTAUTH_URL}/api/auth/signin/twitter?telegramId=${userData?.user_id}`
-    const newPopup = window.open(followUrl, 'Follow', 'width=600,height=400')
-    if (!newPopup) {
-      setLoading(false)
-      alert('Please allow popups to follow on Twitter')
-      return
-    }
-    setPopup(newPopup)
+    setIsTweetOpen(true)
   }
 
-  const googleLogin = () => {
-    setLoading(true)
-
-    const followUrl = `${process.env.NEXTAUTH_URL}/api/auth/signin/google?telegramId=${userData?.user_id}`
-    const newPopup = window.open(followUrl, 'Follow', 'width=600,height=400')
-    if (!newPopup) {
-      setLoading(false)
-      alert('Please allow popups to follow on Twitter')
-      return
-    }
-    setPopup(newPopup)
+  const handleTweet = (username: string) => {
+    setUserData(prev => ({
+      ...prev,
+      twitterId: username,
+    }))
+    setIsTweetOpen(false);
+    twitterFollow();
   }
+
+  const closeTweetModal = () => {
+    setIsTweetOpen(false)
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      const tasks = await fetch(`${process.env.NEXTAUTH_URL}/api/userTasks`);
+      const data = await tasks.json();
+      setTasks(data.tasks);
+    }
+    fetchTasks();
+  }, []);
 
   return (
     <main className="w-full min-h-screen bg-bgMain font-aeonik text-[#878787] homeBackground">
@@ -98,7 +109,7 @@ const Tasks = () => {
             <div className="grid grid-cols-2 gap-[5px]">
               <div className="flex flex-col w-full gap-2 p-3 border border-[#262626] rounded-xl bg-[#010101] justify-between">
                 <span className="text-xs">Tasks Completed</span>
-                <span className="text-xl font-bold text-[#FFFFFF] leading-none">20</span>
+                <span className="text-xl font-bold text-[#FFFFFF] leading-none">{userData.tasks.length}</span>
               </div>
               <div className="flex flex-col w-full gap-3 p-3 border border-[#262626] rounded-xl bg-[#010101] justify-between">
                 <span className="text-xs">Success Rate</span>
@@ -106,13 +117,13 @@ const Tasks = () => {
               </div>
               <div className="flex flex-col w-full gap-3 p-3 pr-16 border border-[#262626] rounded-xl bg-[#010101] justify-between relative overflow-hidden">
                 <span className="text-xs">Total Earned</span>
-                <span className="text-xl font-bold text-[#FFFFFF] leading-none">2000</span>
+                <span className="text-xl font-bold text-[#FFFFFF] leading-none">{userData.points}</span>
                 <Image src="/images/gold-ether.png" className="w-10 h-10 absolute top-1/2 -translate-y-1/2 right-3" width={40} height={40} alt="gold-ether" />
                 <div className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 w-20 h-8 bg-[#FDC818] blur-xl" />
               </div>
               <div className="flex flex-col w-full gap-3 p-3 pr-16 border border-[#262626] rounded-xl bg-[#010101] justify-between relative overflow-hidden">
                 <span className="text-xs">Unlockable Points</span>
-                <span className="text-xl font-bold text-[#FFFFFF] leading-none">2000</span>
+                <span className="text-xl font-bold text-[#FFFFFF] leading-none">{userData.points}</span>
                 <Image src="/images/silver-ether.png" className="w-10 h-10 absolute top-1/2 -translate-y-1/2 right-3" width={40} height={40} alt="silver-ether" />
                 <div className="absolute top-0 right-0 translate-x-1/2 -translate-y-1/2 w-20 h-8 bg-[#FFFFFF] blur-xl" />
               </div>
@@ -127,18 +138,18 @@ const Tasks = () => {
             <div className="p-[1px] bg-gradient-to-b from-[#202020] to-[#272727] rounded-full">
               <div className="bg-[#101010] rounded-full p-1 flex items-center justify-between gap-1">
                 <button
-                  onClick={() => setTypeTask(0)}
+                  onClick={() => setTypeTask("once")}
                   className="p-[1px] bg-gradient-to-b from-[#202020] to-[#272727] rounded-full w-[96px] h-[31px] flex items-center justify-center border-none focus:outline-none"
                 >
-                  <div className={`${typeTask === 0 ? 'bg-[#FFFFFF] text-[#010101]' : 'bg-[#FFFFFF1F] text-[#FCFCFC] hover:bg-[#FFFFFF] hover:text-[#010101]'} rounded-full text-base font-medium w-full h-full flex items-center justify-center transition-colors duration-200`}>
+                  <div className={`${typeTask === "once" ? 'bg-[#FFFFFF] text-[#010101]' : 'bg-[#FFFFFF1F] text-[#FCFCFC] hover:bg-[#FFFFFF] hover:text-[#010101]'} rounded-full text-base font-medium w-full h-full flex items-center justify-center transition-colors duration-200`}>
                     One-Time
                   </div>
                 </button>
                 <button
-                  onClick={() => setTypeTask(1)}
+                  onClick={() => setTypeTask("daily")}
                   className="p-[1px] bg-gradient-to-b from-[#202020] to-[#272727] rounded-full w-[96px] h-[31px] flex items-center justify-center border-none focus:outline-none"
                 >
-                  <div className={`${typeTask === 1 ? 'bg-[#FFFFFF] text-[#010101]' : 'bg-[#FFFFFF1F] text-[#FCFCFC] hover:bg-[#FFFFFF] hover:text-[#010101]'} rounded-full text-base font-medium w-full h-full flex items-center justify-center transition-colors duration-200`}>
+                  <div className={`${typeTask === "daily" ? 'bg-[#FFFFFF] text-[#010101]' : 'bg-[#FFFFFF1F] text-[#FCFCFC] hover:bg-[#FFFFFF] hover:text-[#010101]'} rounded-full text-base font-medium w-full h-full flex items-center justify-center transition-colors duration-200`}>
                     Daily Tasks
                   </div>
                 </button>
@@ -147,192 +158,71 @@ const Tasks = () => {
           </div>
           <div className="grid grid-cols-1 gap-2.5">
             <div className="bg-gradient-to-b from-[#202020] to-[#272727] p-[1px] rounded-[20px]">
-              <div className="rounded-[19px] bg-[#101010] px-4 py-4 flex items-stretch justify-between">
-                <div className="flex flex-col justify-between">
-                  <p className="text-[#FFFFFF] text-base font-medium">Follow us on Twitter</p>
-                  <div className="flex items-center justify-start gap-1">
-                    {
-                      (status === "loading" || loading) ? (
-                        <p className="text-xs text-[#878787] ">Loading...</p>
-                      ) : userData?.twitterId && userData.followStatus ? (
-                        <>
-                          <p className="text-xs text-[#878787] ">Completed</p>
-                          <div className="w-2.5 h-2.5 rounded-full border-2 border-[#07D7C2]"></div>
-                        </>
-                      ) : (
-                        session && status === "authenticated" ? (
-                          <button
-                            onClick={twitterFollow}
-                            className="w-[54px] h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
-                          >
-                            Follow
-                          </button>
-                        ) :
-                          (
-                            <>
-                              <button
-                                onClick={twitterLogin}
-                                className="w-[54px] h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
-                              >
-                                Start
-                              </button>
-                              <button
-                                onClick={googleLogin}
-                                className="w-[54px] h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
-                              >
-                                Start
-                              </button>
-                            </>
-                          )
-                      )
-                    }
-                  </div>
-                </div>
-                <div className="p-[1px] bg-gradient-to-b from-[#101010] to-[#FFFFFF] via-[#444444] rounded-full">
-                  <div className="relative p-6 rounded-full bg-gradient-to-b from-[#101010] to-[#585858] via-[#1b1b1b]">
-                    <Image src="/images/points.png" className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 w-9 h-auto" width={36} height={36} alt="points" />
-                    <div className="absolute flex flex-col items-center justify-center -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-                      <span className="font-bold leading-none text-[#FFFFFF] text-base ">
-                        10
-                      </span>
-                      <span className="font-medium leading-none text-[#FFFFFF] text-[11px]">
-                        Points
-                      </span>
+              {
+                tasks && tasks.map((task: Task) => {
+                  if (task.type != typeTask) {
+                    return null;
+                  }
+                  return (
+                    <div className="rounded-[19px] bg-[#101010] px-4 py-4 flex items-stretch justify-between" key={task._id}>
+                      <div className="flex flex-col justify-between">
+                        <p className="text-[#FFFFFF] text-base font-medium">{task.title}</p>
+                        <div className="flex items-center justify-start gap-1">
+                          {
+                            (loading) ? (
+                              <p className="text-xs text-[#878787] ">Loading...</p>
+                            ) : userData.followStatus || userData.tasks.some((t: Task) => t._id === task._id) ? (
+                              <>
+                                <p className="text-xs text-[#878787] ">Completed</p>
+                                <div className="w-2.5 h-2.5 rounded-full border-2 border-[#07D7C2]"></div>
+                              </>
+                            ) : (
+                              userData?.twitterId ? (
+                                <button
+                                  onClick={twitterFollow}
+                                  className="w-[54px] h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
+                                >
+                                  Follow
+                                </button>
+                              ) :
+                                (
+                                  <>
+                                    <button
+                                      onClick={twitterLogin}
+                                      className="w-[54px] h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
+                                    >
+                                      Start
+                                    </button>
+                                  </>
+                                )
+                            )
+                          }
+                        </div>
+                      </div>
+                      <div className="p-[1px] bg-gradient-to-b from-[#101010] to-[#FFFFFF] via-[#444444] rounded-full">
+                        <div className="relative p-6 rounded-full bg-gradient-to-b from-[#101010] to-[#585858] via-[#1b1b1b]">
+                          <Image src="/images/points.png" className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 w-9 h-auto" width={36} height={36} alt="points" />
+                          <div className="absolute flex flex-col items-center justify-center -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
+                            <span className="font-bold leading-none text-[#FFFFFF] text-base ">
+                              {task.points}
+                            </span>
+                            <span className="font-medium leading-none text-[#FFFFFF] text-[11px]">
+                              Points
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-gradient-to-b from-[#202020] to-[#272727] p-[1px] rounded-[20px]">
-              <div className="rounded-[19px] bg-[#101010] px-4 py-4 flex items-stretch justify-between">
-                <div className="flex flex-col justify-between">
-                  <p className="text-[#FFFFFF] text-base font-medium">Join Telegram Channel</p>
-                  <div className="flex items-center justify-start gap-1">
-                    <button
-                      onClick={() => setIsOpen(true)}
-                      className="w-[54px] h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
-                    >
-                      Start
-                    </button>
-                  </div>
-                </div>
-                <div className="p-[1px] bg-gradient-to-b from-[#101010] to-[#F39F3D] via-[#4D361C]  rounded-full">
-                  <div className="relative p-6 rounded-full bg-gradient-to-b from-[#101010] to-[#533A1D] via-[#302417]">
-                    <Image src="/images/points.png" className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 w-9 h-auto" width={36} height={36} alt="points" />
-                    <div className="absolute flex flex-col items-center justify-center -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-                      <span className="font-bold leading-none text-[#F39F3D] text-base ">
-                        25
-                      </span>
-                      <span className="font-medium leading-none text-[#F39F3D] text-[11px]">
-                        Points
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-gradient-to-b from-[#202020] to-[#272727] p-[1px] rounded-[20px]">
-              <div className="rounded-[19px] bg-[#101010] px-4 py-4 flex items-stretch justify-between">
-                <div className="flex flex-col justify-between">
-                  <p className="text-[#FFFFFF] text-base font-medium">Invite First Friend</p>
-                  <div className="flex items-center justify-start gap-1">
-                    <button
-                      onClick={() => setIsOpen(true)}
-                      className="w-[54px] h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
-                    >
-                      Start
-                    </button>
-                  </div>
-                </div>
-                <div className="p-[1px] bg-gradient-to-b from-[#101010] to-[#FFDF1F] via-[#504814] rounded-full">
-                  <div className="relative p-6 rounded-full bg-gradient-to-b from-[#101010] to-[#574D14] via-[#302417]">
-                    <Image src="/images/points.png" className="absolute top-1/2 -translate-y-1/2 left-1/2 -translate-x-1/2 w-9 h-auto" width={36} height={36} alt="points" />
-                    <div className="absolute flex flex-col items-center justify-center -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-                      <span className="font-bold leading-none text-[#FFDF1F] text-base ">
-                        50
-                      </span>
-                      <span className="font-medium leading-none text-[#FFDF1F] text-[11px]">
-                        Points
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-gradient-to-b from-[#202020] to-[#272727] p-[1px] rounded-[20px]">
-              <div className="rounded-[19px] bg-[#101010] px-4 py-4 flex items-stretch justify-between">
-                <div className="flex flex-col justify-between">
-                  <p className="text-[#FFFFFF] text-base font-medium">Complete Your Profile</p>
-                  <div className="flex items-center justify-start gap-1">
-                    <p className="text-xs text-[#878787] ">Completed</p>
-                    <div className="w-2.5 h-2.5 rounded-full border-2 border-[#07D7C2]"></div>
-                  </div>
-                </div>
-                <div className="p-[1px] bg-gradient-to-t from-white to-transparent rounded-full">
-                  <div className="relative p-6 rounded-full bg-gradient-to-t from-[#585858] to-[#101010]">
-                    <div className="absolute flex flex-col items-center justify-center -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-                      <span className="font-bold leading-none text-white text-base ">
-                        52
-                      </span>
-                      <span className="font-medium leading-none text-white text-[11px]">
-                        Points
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-gradient-to-b from-[#202020] to-[#272727] p-[1px] rounded-[20px]">
-              <div className="rounded-[19px] bg-[#101010] px-4 py-4 flex items-stretch justify-between">
-                <div className="flex flex-col justify-between">
-                  <p className="text-[#FFFFFF] text-base font-medium">Follow us on Twitter</p>
-                  <div className="flex items-center justify-start gap-1">
-                    <p className="text-xs text-[#878787] ">Completed</p>
-                    <div className="w-2.5 h-2.5 rounded-full border-2 border-[#07D7C2]"></div>
-                  </div>
-                </div>
-                <div className="p-[1px] bg-gradient-to-t from-white to-transparent rounded-full">
-                  <div className="relative p-6 rounded-full bg-gradient-to-t from-[#585858] to-[#101010]">
-                    <div className="absolute flex flex-col items-center justify-center -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-                      <span className="font-bold leading-none text-white text-base ">
-                        52
-                      </span>
-                      <span className="font-medium leading-none text-white text-[11px]">
-                        Points
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="bg-gradient-to-b from-[#202020] to-[#272727] p-[1px] rounded-[20px]">
-              <div className="rounded-[19px] bg-[#101010] px-4 py-4 flex items-stretch justify-between">
-                <div className="flex flex-col justify-between">
-                  <p className="text-[#FFFFFF] text-base font-medium">Follow us on Twitter</p>
-                  <div className="flex items-center justify-start gap-1">
-                    <p className="text-xs text-[#878787] ">Completed</p>
-                    <div className="w-2.5 h-2.5 rounded-full border-2 border-[#07D7C2]"></div>
-                  </div>
-                </div>
-                <div className="p-[1px] bg-gradient-to-t from-white to-transparent rounded-full">
-                  <div className="relative p-6 rounded-full bg-gradient-to-t from-[#585858] to-[#101010]">
-                    <div className="absolute flex flex-col items-center justify-center -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2">
-                      <span className="font-bold leading-none text-white text-base ">
-                        52
-                      </span>
-                      <span className="font-medium leading-none text-white text-[11px]">
-                        Points
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                  )
+                })
+              }
             </div>
           </div>
         </div>
       </div>
-      {isOpen && <Modal closeModal={() => setIsOpen(false)} />}
-    </main>
+      {isOpen && <Modal closeModal={() => setIsOpen(false)} earned={earned} />}
+      {isTweetOpen && <TweetModal closeModal={closeTweetModal} handleTweet={handleTweet} />}
+    </main >
   );
 };
 

@@ -1,7 +1,7 @@
 import db from "@/app/database/db";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
-const { User, Activity, Level } = db;
+const { User, Activity, Level, Task } = db;
 
 // Add this interface before the UserController class
 interface UserDocument {
@@ -28,7 +28,8 @@ class UserController {
         let user;
         const existingUser = await User.findOne({ user_id })
             .populate("referredBy")
-            .select("-id");
+            .populate("tasks")
+            .select("-_id");
         if (!existingUser) {
             const newReferralCode = UserController.generateReferralCode();
             const newUser = await User.create({
@@ -40,10 +41,12 @@ class UserController {
                 twitterId: null,
                 targetId: null,
                 followStatus: false,
+                tasks: [],
             });
 
             user = await User.findOne({ user_id: newUser.user_id })
                 .populate("referredBy")
+                .populate("task")
                 .select("-id");
         } else {
             user = existingUser;
@@ -74,7 +77,8 @@ class UserController {
                 twitterId: user.twitterId,
                 targetId: user.targetId,
                 followStatus: user.followStatus,
-                referral_code: user.referral_code
+                referral_code: user.referral_code,
+                tasks: user.tasks
             },
             level: {
                 current_level: level[0]?.level_id || 0,
@@ -177,13 +181,11 @@ class UserController {
     }
 
     static async getActivity(user_id: string) {
-
         const user = await User.findOne({ user_id });
-        console.log(user);
         if (!user) {
             return { message: "User Not Found" };
         }
-
+        console.log("user", user);
         const activities = await Activity.find({ user: user._id })
             .populate({ path: "user", select: "-_id user_id" })
             .populate({ path: "rewarded_by", select: "-_id user_id" })
@@ -218,11 +220,46 @@ class UserController {
         return { message: "Levels already created." };
     }
 
-    static async followTarget(data: { targetUserId: string, loggedInUserId: string }) {
+    static extractTwitterId(loggedInUserId: string): string {
+        // Check if the input is a URL
+        const urlPattern = /https?:\/\/(?:www\.)?x\.com\/([^\/]+)/;
+        const handlePattern = /@(\w+)/;
+
+        let match = loggedInUserId.match(urlPattern);
+        if (match) {
+            return match[1];
+        }
+
+        // Check if the input is a handle
+        match = loggedInUserId.match(handlePattern);
+        if (match) {
+            return match[1];
+        }
+
+        // If it's neither, return the original input
+        return loggedInUserId;
+    }
+
+    static async followTarget(data: { targetUserId: string, loggedInUserId: string, telegramId: string }) {
         try {
-            const { targetUserId, loggedInUserId } = data;
+            const { targetUserId, telegramId } = data;
+            let loggedInUserId = data.loggedInUserId;
             const apiKey = process.env.SOCIALDATA_API_KEY;
             console.log("loggedInUserId", loggedInUserId);
+            if (!Number(loggedInUserId)) {
+                loggedInUserId = UserController.extractTwitterId(loggedInUserId);
+                const twitterUrl = `https://api.twitter.com/2/users/by/username/${loggedInUserId}`;
+                const headers = {
+                    'Authorization': `Bearer ${process.env.BEARER_TOKEN}`,
+                    'Accept': 'application/json',
+                };
+                const params = {
+                    "user.fields": "profile_image_url, name"
+                }
+                const response = await axios.get(twitterUrl, { headers, params });
+                loggedInUserId = response.data.data.id;
+                console.log("loggedInUserId", loggedInUserId);
+            }
             console.log("targetUserId", targetUserId);
             const url = `https://api.socialdata.tools/twitter/user/${loggedInUserId}/following/${targetUserId}`;
             const headers = {
@@ -234,12 +271,20 @@ class UserController {
                 const response = await axios.get(url, { headers });
 
                 if (response.data.status === 'success' && response.data.is_following) {
-                    await User.findOneAndUpdate(
-                        { user_id: loggedInUserId },
-                        { $set: { followStatus: true, targetId: targetUserId } }
+                    const task = await Task.findOne({ index: 0 });
+                    const user = await User.findOneAndUpdate(
+                        { user_id: telegramId },
+                        { $set: { followStatus: true, targetId: targetUserId, twitterId: loggedInUserId, tasks: [...task] } }
                     );
+                    const activity = await Activity.create({
+                        user: user,
+                        rewarded_by: null,
+                        type: "TASK",
+                        referral_code: null,
+                        points: task.points,
+                    });
 
-                    return { success: true };
+                    return { success: true, activity: activity, user: user };
                 } else {
                     return { error: 'Failed to verify follow status' };
                 }
@@ -251,6 +296,11 @@ class UserController {
             console.error('Error:', error);
             return { error: 'Internal server error' };
         }
+    }
+
+    static async getTasks() {
+        const tasks = await Task.find();
+        return tasks;
     }
 }
 

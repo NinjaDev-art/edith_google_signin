@@ -21,6 +21,7 @@ export interface UserData {
     targetId: string | null;
     referCode: string | null;
     followStatus: boolean;
+    tasks: Task[];
 }
 
 export interface UserActivities {
@@ -36,4 +37,12 @@ export interface Activity {
     referral_code: string;
     points: number;
     created_at: string;
+}
+
+export interface Task {
+    _id: string;
+    title: string;
+    type: string;
+    points: number;
+    index: number;
 }

@@ -10,7 +10,8 @@ mongoose.Promise = global.Promise;
 const db = {
     User: userModel(),
     Level: levelModel(),
-    Activity: activitiyModel()
+    Activity: activitiyModel(),
+    Task: taskModel()
 }
 
 function userModel() {
@@ -30,6 +31,7 @@ function userModel() {
         twitterId: { type: String, default: null },
         targetId: { type: String, default: null },
         followStatus: { type: Boolean, default: false },
+        tasks: { type: [Schema.Types.ObjectId], ref: "Task", default: [] },
     });
 
     return mongoose.models.User || mongoose.model('User', UserSchema);
@@ -65,6 +67,17 @@ function activitiyModel() {
     });
 
     return mongoose.models.Activity || mongoose.model('Activity', ActivitySchema);
+}
+
+function taskModel() {
+    const TaskSchema = new Schema({
+        title: { type: String, required: true },
+        type: { type: String, enum: ["ONCE", "DAILY"], required: true },
+        points: { type: Number, required: true },
+        index: { type: Number, required: true },
+    });
+
+    return mongoose.models.Task || mongoose.model('Task', TaskSchema);
 }
 
 export default db;
