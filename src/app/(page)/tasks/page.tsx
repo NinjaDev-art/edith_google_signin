@@ -6,6 +6,7 @@ import { useUser } from "@/app/context/UserContext";
 import axios from "axios";
 import Image from "next/image";
 import { useSession } from 'next-auth/react'
+import { openLink } from '@telegram-apps/sdk';
 
 const Tasks = () => {
   const { data: session, status } = useSession()
@@ -66,7 +67,7 @@ const Tasks = () => {
 
   const twitterLogin = () => {
     setLoading(true)
-    const followUrl = `${process.env.NEXTAUTH_URL}/api/auth/signin/twitter`
+    const followUrl = `${process.env.NEXTAUTH_URL}/api/auth/signin/twitter?telegramId=${userData?.user_id}`
     const newPopup = window.open(followUrl, 'Follow', 'width=600,height=400')
     if (!newPopup) {
       setLoading(false)
@@ -77,16 +78,12 @@ const Tasks = () => {
   }
 
   const googleLogin = () => {
-    setLoading(true)
-
-    const followUrl = `${process.env.NEXTAUTH_URL}/api/auth/signin/google`
-    const newPopup = window.open(followUrl, 'Follow', 'width=600,height=400')
-    if (!newPopup) {
-      setLoading(false)
-      alert('Please allow popups to follow on Twitter')
-      return
+    if (openLink.isAvailable()) {
+      openLink(`${process.env.NEXTAUTH_URL}/api/auth/signin/google`, {
+        tryBrowser: 'chrome',
+        tryInstantView: true,
+      });
     }
-    setPopup(newPopup)
   }
 
   return (

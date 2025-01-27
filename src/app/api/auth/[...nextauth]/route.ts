@@ -11,7 +11,7 @@ const authOptions = {
             version: "2.0",
             authorization: {
                 params: {
-                    scope: "users.read tweet.read follows.write follows.read",
+                    scope: "users.read",
                     response_type: "code",
                     access_type: "offline",
                 },
