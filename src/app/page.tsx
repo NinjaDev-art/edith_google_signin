@@ -25,7 +25,7 @@ export default function Home() {
     } else {
       setOffset(0);
     }
-  }, [offset, userData?.points, userData?.max, userData?.min, userData?.level, circumference]);
+  }, [offset, userData?.points, userData?.max, userData?.min]);
 
   return (
     <>
