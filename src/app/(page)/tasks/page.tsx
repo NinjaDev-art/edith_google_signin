@@ -6,7 +6,6 @@ import { useUser } from "@/app/context/UserContext";
 import axios from "axios";
 import Image from "next/image";
 import { useSession } from 'next-auth/react'
-import { openLink } from '@telegram-apps/sdk';
 
 const Tasks = () => {
   const { data: session, status } = useSession()
