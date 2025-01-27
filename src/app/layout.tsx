@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { UserProvider } from "./context/UserContext";
-import Provider from "./context/Provider";
 import Tabs from "./components/Tabs";
+import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -15,15 +15,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
-        <Provider>
+    <ClerkProvider>
+      <html lang="en">
+        <body>
           <UserProvider>
             {children}
             <Tabs />
           </UserProvider>
-        </Provider>
-      </body>
-    </html>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

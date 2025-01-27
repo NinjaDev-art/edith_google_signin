@@ -5,15 +5,22 @@ import Modal from "@/app/components/Modal";
 import { useUser } from "@/app/context/UserContext";
 import axios from "axios";
 import Image from "next/image";
-import { signIn, useSession } from 'next-auth/react'
+import { useAuth } from '@clerk/nextjs'
+import { useUser as useClerkUser } from '@clerk/nextjs'
+import { useSignIn } from "@clerk/nextjs";
+import type { OAuthStrategy } from "@clerk/types";
 
 const Tasks = () => {
-  const { data: session, status } = useSession()
+  // const { data: session, status } = useSession()
   const [typeTask, setTypeTask] = useState<number>(0);
   const [isOpen, setIsOpen] = useState(false);
   const { userData, setUserData } = useUser();
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState<Window | null>(null);
+  const { isLoaded, userId, sessionId } = useAuth()
+  const { user } = useClerkUser();
+  const [isLoading, setIsLoading] = useState<OAuthStrategy | null>(null);
+  const { signIn, isLoaded: signInLoaded } = useSignIn();
 
   const twitterFollow = () => {
     setLoading(true)
@@ -28,30 +35,46 @@ const Tasks = () => {
     setPopup(newPopup)
   }
 
-  const checkFollowStatus = async () => {
+  async function oauthSignIn(provider: OAuthStrategy) {
+    if (!signInLoaded) return null;
     try {
-      const response = await axios.post(`${process.env.NEXTAUTH_URL}/api/userFollow`, {
-        targetUserId: process.env.TWITTER_USER_ID,
-        loggedInUserId: session?.user?.name
-      })
-
-      // Handle both 200 and 201 status codes
-      if (response.status >= 200 && response.status < 300) {
-        setUserData(prev => ({
-          ...prev,
-          followStatus: true,
-        }))
-      } else {
-        console.error('Follow check failed:', response.data)
-      }
-    } catch (err) {
-      console.error('Follow check error:', err)
-    } finally {
-      setLoading(false)
+      setIsLoading(provider);
+      await signIn.authenticateWithRedirect({
+        strategy: provider,
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: "/tasks"
+      });
+    } catch (error) {
+      setIsLoading(null);
+      console.log(error)
     }
   }
 
   useEffect(() => {
+    const checkFollowStatus = async () => {
+      if (!isLoaded || !userId) return
+      try {
+        const response = await axios.post(`${process.env.NEXTAUTH_URL}/api/userFollow`, {
+          targetUserId: process.env.TWITTER_USER_ID,
+          loggedInUserId: user?.externalAccounts[0]?.providerUserId
+        })
+
+        // Handle both 200 and 201 status codes
+        if (response.status >= 200 && response.status < 300) {
+          setUserData(prev => ({
+            ...prev,
+            followStatus: true,
+          }))
+        } else {
+          console.error('Follow check failed:', response.data)
+        }
+      } catch (err) {
+        console.error('Follow check error:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
     if (popup) {
       const interval = setInterval(() => {
         if (popup.closed) {
@@ -63,14 +86,6 @@ const Tasks = () => {
       return () => clearInterval(interval)
     }
   }, [popup])
-
-  const twitterLogin = () => {
-    signIn('twitter')
-  }
-
-  const googleLogin = () => {
-    signIn('google')
-  }
 
   return (
     <main className="w-full min-h-screen bg-bgMain font-aeonik text-[#878787] homeBackground">
@@ -135,7 +150,7 @@ const Tasks = () => {
                   <p className="text-[#FFFFFF] text-base font-medium">Follow us on Twitter</p>
                   <div className="flex items-center justify-start gap-1">
                     {
-                      (status === "loading" || loading) ? (
+                      (isLoading || loading) ? (
                         <p className="text-xs text-[#878787] ">Loading...</p>
                       ) : userData?.twitterId && userData.followStatus ? (
                         <>
@@ -143,7 +158,7 @@ const Tasks = () => {
                           <div className="w-2.5 h-2.5 rounded-full border-2 border-[#07D7C2]"></div>
                         </>
                       ) : (
-                        session && status === "authenticated" ? (
+                        sessionId ? (
                           <button
                             onClick={twitterFollow}
                             className="w-[54px] h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
@@ -154,13 +169,7 @@ const Tasks = () => {
                           (
                             <>
                               <button
-                                onClick={twitterLogin}
-                                className="w-[54px] h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
-                              >
-                                Start
-                              </button>
-                              <button
-                                onClick={googleLogin}
+                                onClick={() => void oauthSignIn(process.env.CLERK_STRATEGY as OAuthStrategy)}
                                 className="w-[54px] h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
                               >
                                 Start
