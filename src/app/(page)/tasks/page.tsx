@@ -17,7 +17,7 @@ const Tasks = () => {
 
   const twitterFollow = () => {
     setLoading(true)
-    
+
     const followUrl = `https://twitter.com/intent/follow?user_id=${process.env.TWITTER_USER_ID}`
     const newPopup = window.open(followUrl, 'Follow', 'width=600,height=400')
     if (!newPopup) {
@@ -66,6 +66,10 @@ const Tasks = () => {
 
   const twitterLogin = () => {
     signIn('twitter')
+  }
+
+  const googleLogin = () => {
+    signIn('google')
   }
 
   return (
@@ -148,12 +152,20 @@ const Tasks = () => {
                           </button>
                         ) :
                           (
-                            <button
-                              onClick={twitterLogin}
-                              className="w-[54px] h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
-                            >
-                              Start
-                            </button>
+                            <>
+                              <button
+                                onClick={twitterLogin}
+                                className="w-[54px] h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
+                              >
+                                Start
+                              </button>
+                              <button
+                                onClick={googleLogin}
+                                className="w-[54px] h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
+                              >
+                                Start
+                              </button>
+                            </>
                           )
                       )
                     }

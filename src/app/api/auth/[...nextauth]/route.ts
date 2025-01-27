@@ -1,6 +1,7 @@
 import NextAuth, { Account, Session } from "next-auth";
 import { JWT } from "next-auth/jwt";
 import TwitterProvider from "next-auth/providers/twitter";
+import GoogleProvider from "next-auth/providers/google";
 
 const authOptions = {
     providers: [
@@ -14,6 +15,17 @@ const authOptions = {
                     response_type: "code",
                     access_type: "offline",
                 },
+            },
+        }),
+        GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID!,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+            authorization: {
+                params: {
+                    prompt: "consent",
+                    access_type: "offline",
+                    response_type: "code"
+                }
             },
         }),
     ],
