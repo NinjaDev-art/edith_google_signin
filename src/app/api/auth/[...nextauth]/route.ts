@@ -24,7 +24,7 @@ const authOptions = {
         }) {
             if (account) {
                 token.accessToken = account.access_token;
-                token.userId = account.providerAccountId;
+                token.name = account.providerAccountId;
             }
             return token;
         },
@@ -34,12 +34,12 @@ const authOptions = {
         }) {
             session.user = {
                 ...session.user,
-                name: token.sub ?? "",
+                name: token.name ?? "",
             };
             return session;
         },
     },
-    debug: process.env.NODE_ENV === "development",
+    debug: true,
     secret: process.env.NEXTAUTH_SECRET,
 };
 
