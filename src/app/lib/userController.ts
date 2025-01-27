@@ -259,7 +259,6 @@ class UserController {
                         "user.fields": "profile_image_url,name"
                     }
                     const response = await axios.get(twitterUrl, { headers, params });
-                    console.log("response", response);
                     loggedInUserId = response.data.data.id;
                     console.log("loggedInUserId", loggedInUserId);
                 } catch (error) {
