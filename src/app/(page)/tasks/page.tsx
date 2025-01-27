@@ -78,12 +78,16 @@ const Tasks = () => {
   }
 
   const googleLogin = () => {
-    if (openLink.isAvailable()) {
-      openLink(`${process.env.NEXTAUTH_URL}/api/auth/signin/google`, {
-        tryBrowser: 'chrome',
-        tryInstantView: true,
-      });
+    setLoading(true)
+
+    const followUrl = `${process.env.NEXTAUTH_URL}/api/auth/signin/google?telegramId=${userData?.user_id}`
+    const newPopup = window.open(followUrl, 'Follow', 'width=600,height=400')
+    if (!newPopup) {
+      setLoading(false)
+      alert('Please allow popups to follow on Twitter')
+      return
     }
+    setPopup(newPopup)
   }
 
   return (
