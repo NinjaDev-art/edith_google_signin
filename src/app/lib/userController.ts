@@ -247,18 +247,24 @@ class UserController {
             const apiKey = process.env.SOCIALDATA_API_KEY;
             console.log("loggedInUserId", loggedInUserId);
             if (!Number(loggedInUserId)) {
-                loggedInUserId = UserController.extractTwitterId(loggedInUserId);
-                const twitterUrl = `https://api.twitter.com/2/users/by/username/${loggedInUserId}`;
-                const headers = {
-                    'Authorization': `Bearer ${process.env.BEARER_TOKEN}`,
-                    'Accept': 'application/json',
-                };
-                const params = {
-                    "user.fields": "profile_image_url, name"
+                try {
+                    loggedInUserId = UserController.extractTwitterId(loggedInUserId);
+                    console.log("loggedInUserId", loggedInUserId);
+                    const twitterUrl = `https://api.twitter.com/2/users/by/username/${loggedInUserId}`;
+                    const headers = {
+                        "User-Agent": "v2TweetLookupJS",
+                        "authorization": `Bearer ${process.env.BEARER_TOKEN}`
+                    }
+                    const params = {
+                        "user.fields": "profile_image_url,name"
+                    }
+                    const response = await axios.get(twitterUrl, { headers, params });
+                    console.log("response", response);
+                    loggedInUserId = response.data.data.id;
+                    console.log("loggedInUserId", loggedInUserId);
+                } catch (error) {
+                    console.error("Error extracting Twitter ID:", error);
                 }
-                const response = await axios.get(twitterUrl, { headers, params });
-                loggedInUserId = response.data.data.id;
-                console.log("loggedInUserId", loggedInUserId);
             }
             console.log("targetUserId", targetUserId);
             const url = `https://api.socialdata.tools/twitter/user/${loggedInUserId}/following/${targetUserId}`;
