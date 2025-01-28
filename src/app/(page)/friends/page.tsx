@@ -18,7 +18,7 @@ const Friends = () => {
   }
 
   useEffect(() =>
-    setReferralCode(`https://t.me/edithsuperai_bot/edithAPP?startapp=${userData?.referCode}`)
+    setReferralCode(`https://t.me/edithx_test_bot/edithx_test_app?startapp=${userData?.referCode ?? ''}`)
     , [userData?.referCode])
 
   return (
@@ -100,8 +100,12 @@ const Friends = () => {
               </div>
               <div className="flex flex-col items-stretch gap-4 p-4">
                 {
-                  userActivities?.activities.map((item, index) =>
-                    <Activity key={index} item={item} />
+                  userActivities?.activities.map((item, index) => {
+                    if (item.type !== 'REFERRAL') return null;
+                    return (
+                      <Activity key={index} item={item} />
+                    )
+                  }
                   )
                 }
               </div>
