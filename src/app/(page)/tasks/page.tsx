@@ -73,14 +73,17 @@ const Tasks = () => {
     }
 
     if (popup) {
-      const interval = setInterval(() => {
-        if (popup.closed) {
-          checkFollowStatus()
-          clearInterval(interval)
-        }
-      }, 1000)
+      const handlePopupClose = () => {
+        checkFollowStatus();
+      };
 
-      return () => clearInterval(interval)
+      popup.onbeforeunload = handlePopupClose;
+
+      return () => {
+        if (popup) {
+          popup.onbeforeunload = null;
+        }
+      };
     }
   }, [popup])
 
