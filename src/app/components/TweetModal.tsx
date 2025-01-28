@@ -22,7 +22,7 @@ const TweetModal = ({ closeModal, handleTweet }: { closeModal: () => void, handl
           value={twitterUsername}
           onChange={(e) => setTwitterUsername(e.target.value)}
           className="w-full p-2 mb-4 border border-[#262626] rounded bg-[#010101] text-[#FCFCFC] focus:outline-none"
-          placeholder="@*** OR https://x.com/***"
+          placeholder="@username OR https://x.com/username"
         />
         <div className="flex justify-end gap-2">
           <button
