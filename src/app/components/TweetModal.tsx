@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
+import { Dispatch, SetStateAction } from 'react';
 
-const TweetModal = ({ closeModal, handleTweet }: { closeModal: () => void, handleTweet: (username: string) => void }) => {
+const TweetModal = ({ closeModal, handleTweet, error, setError }:
+  { closeModal: () => void, handleTweet: (username: string) => void, error: string, setError: Dispatch<SetStateAction<string>> }
+) => {
   const [twitterUsername, setTwitterUsername] = useState('');
-  const [error, setError] = useState('');
 
   const handleNext = () => {
     // Regular expression to match a valid Twitter username or URL

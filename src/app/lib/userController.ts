@@ -250,6 +250,43 @@ class UserController {
         return loggedInUserId;
     }
 
+    static async registerTwitterId(data: { twitterId: string, telegramId: string }) {
+        let twitterId = data.twitterId;
+        const telegramId = data.telegramId;
+        if (!Number(twitterId)) {
+            try {
+                twitterId = UserController.extractTwitterId(twitterId);
+                console.log("twitterId", twitterId);
+                const twitterUrl = `https://api.socialdata.tools/twitter/user/${twitterId}`;
+                const apiKey = process.env.SOCIALDATA_API_KEY;
+                const headers = {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Accept': 'application/json',
+                }
+                const response = await axios.get(twitterUrl, { headers });
+                twitterId = response.data.id;
+                console.log("twitterId", twitterId);
+            } catch (error) {
+                console.error("Error extracting Twitter ID:", error);
+                return { error: 'Invalid Twitter ID' };
+            }
+        }
+        const existingTwitter = await User.findOne({ twitterId });
+        if (existingTwitter) {
+            return { error: 'This twitter is already used' };
+        }
+        const user = await User.findOne({ user_id: telegramId });
+        if (!user) {
+            return { error: 'User is not registered' };
+        }
+        const updatedUser = await User.findOneAndUpdate(
+            { user_id: telegramId },
+            { $set: { twitterId } },
+            { new: true }
+        );
+        return { success: true, user: updatedUser };
+    }
+
     static async followTarget(data: { targetUserId: string, loggedInUserId: string, telegramId: string }) {
         try {
             const { targetUserId, telegramId } = data;
@@ -274,7 +311,7 @@ class UserController {
             }
             console.log("loggedInUserId", loggedInUserId);
             const existingTwitter = await User.findOne({ twitterId: loggedInUserId });
-            if (existingTwitter) {
+            if (existingTwitter.followStatus) {
                 console.log('This twitter is already used');
                 return { error: 'This twitter is already used' };
             }

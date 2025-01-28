@@ -16,6 +16,7 @@ const Tasks = () => {
   const [popup, setPopup] = useState<Window | null>(null);
   const [earned, setEarned] = useState(0);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [error, setError] = useState('');
 
   const twitterFollow = () => {
     setLoading(true)
@@ -29,76 +30,75 @@ const Tasks = () => {
     setPopup(newPopup)
   }
 
-  useEffect(() => {
-    const checkFollowStatus = async () => {
-      try {
-        const response = await fetch(`${process.env.NEXTAUTH_URL}/api/userFollow`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            targetUserId: process.env.TWITTER_USER_ID,
-            loggedInUserId: userData?.twitterId,
-            telegramId: userData?.user_id
-          })
+  const checkFollowStatus = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${process.env.NEXTAUTH_URL}/api/userFollow`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          targetUserId: process.env.TWITTER_USER_ID,
+          loggedInUserId: userData?.twitterId,
+          telegramId: userData?.user_id
         })
-        const data = await response.json();
+      })
+      const data = await response.json();
 
-        // Handle both 200 and 201 status codes
-        if (data.success) {
-          setUserData(data.user);
-          setEarned(10);
-          setIsOpen(true);
-          const activities = Array.isArray(data.activity) ? data.activity : [];
-          const transformedActivities: Activity[] = activities.map((item: { rewarded_by: { user_id: string }; type: string; referral_code: string; points: number; createdAt: string; }) => ({
-            rewarded_user_id: item.rewarded_by?.user_id,
-            type: item.type,
-            referral_code: item.referral_code,
-            points: item.points,
-            created_at: item.createdAt,
-          }));
-          setUserActivities((prevUserActivity: UserActivities) => ({
-            ...prevUserActivity,
-            activities: transformedActivities
-          }));
-        } else {
-          console.error('Follow check failed:', data)
-        }
-      } catch (err) {
-        console.error('Follow check error:', err)
-      } finally {
-        setLoading(false)
+      // Handle both 200 and 201 status codes
+      if (data.success) {
+        setUserData(data.user);
+        setEarned(10);
+        setIsOpen(true);
+        const activities = Array.isArray(data.activity) ? data.activity : [];
+        const transformedActivities: Activity[] = activities.map((item: { rewarded_by: { user_id: string }; type: string; referral_code: string; points: number; createdAt: string; }) => ({
+          rewarded_user_id: item.rewarded_by?.user_id,
+          type: item.type,
+          referral_code: item.referral_code,
+          points: item.points,
+          created_at: item.createdAt,
+        }));
+        setUserActivities((prevUserActivity: UserActivities) => ({
+          ...prevUserActivity,
+          activities: transformedActivities
+        }));
+      } else {
+        console.log('Follow check failed:', data)
+        throw new Error('Follow check failed')
       }
+    } catch (err) {
+      console.log('Follow check error:', err)
+      twitterLogin();
+    } finally {
+      setLoading(false)
     }
-
-    if (popup) {
-      const handlePopupClose = () => {
-        checkFollowStatus();
-      };
-
-      popup.onbeforeunload = handlePopupClose;
-
-      return () => {
-        if (popup) {
-          popup.onbeforeunload = null;
-        }
-      };
-    }
-  }, [popup])
+  }
 
   const twitterLogin = () => {
     setLoading(true)
     setIsTweetOpen(true)
   }
 
-  const handleTweet = (username: string) => {
-    setUserData(prev => ({
-      ...prev,
-      twitterId: username,
-    }))
-    setIsTweetOpen(false);
-    twitterFollow();
+  const handleTweet = async (username: string) => {
+    const response = await fetch(`${process.env.NEXTAUTH_URL}/api/registerTwitterId`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        twitterId: username,
+        telegramId: userData?.user_id
+      })
+    })
+    const data = await response.json();
+    if (data.success) {
+      setUserData(data.user);
+      setIsTweetOpen(false);
+      twitterFollow();
+    } else {
+      setError(data.message);
+    }
   }
 
   const closeTweetModal = () => {
@@ -114,6 +114,22 @@ const Tasks = () => {
     }
     fetchTasks();
   }, []);
+
+  useEffect(() => {
+    if (popup) {
+      const handlePopupClose = () => {
+        setLoading(false);
+      };
+
+      popup.onbeforeunload = handlePopupClose;
+
+      return () => {
+        if (popup) {
+          popup.onbeforeunload = null;
+        }
+      };
+    }
+  }, [popup])
 
   return (
     <main className="w-full min-h-screen bg-bgMain font-aeonik text-[#878787] homeBackground">
@@ -194,10 +210,10 @@ const Tasks = () => {
                             ) : (
                               userData?.twitterId ? (
                                 <button
-                                  onClick={twitterFollow}
-                                  className="w-[54px] h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
+                                  onClick={checkFollowStatus}
+                                  className="px-4 h-[23px] bg-[#FFFFFF] rounded-full flex items-center justify-center text-base font-medium text-[#010101] border-none focus:outline-none"
                                 >
-                                  Follow
+                                  Confirm
                                 </button>
                               ) :
                                 (
@@ -236,7 +252,7 @@ const Tasks = () => {
         </div>
       </div>
       {isOpen && <Modal closeModal={() => setIsOpen(false)} earned={earned} />}
-      {isTweetOpen && <TweetModal closeModal={closeTweetModal} handleTweet={handleTweet} />}
+      {isTweetOpen && <TweetModal closeModal={closeTweetModal} handleTweet={handleTweet} error={error} setError={setError} />}
     </main >
   );
 };
