@@ -8,7 +8,7 @@ const UserContext = createContext<UserContextTypes | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     let data = {
-        user_id: 6995859320,
+        user_id: 6977492118,
         referCode: "",
         firstName: "John",
         lastName: "Doe",

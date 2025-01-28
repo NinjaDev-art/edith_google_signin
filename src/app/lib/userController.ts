@@ -46,8 +46,8 @@ class UserController {
 
             user = await User.findOne({ user_id: newUser.user_id })
                 .populate("referredBy")
-                .populate("task")
-                .select("-id");
+                .populate("tasks")
+                .select("-_id");
         } else {
             user = existingUser;
         }
