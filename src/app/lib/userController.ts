@@ -19,8 +19,8 @@ class UserController {
     static generateReferralCode() {
         return uuidv4().replace(/-/g, "").slice(0, 12).toUpperCase();
     }
-    static async initiateOrFetchUser(data: { user_id: string, refer_code: string }) {
-        const { user_id, refer_code } = data;
+    static async initiateOrFetchUser(data: { user_id: string, referCode: string }) {
+        const { user_id, referCode } = data;
 
         if (!user_id)
             return { message: "User Id is required", success: false };
@@ -29,7 +29,6 @@ class UserController {
         const existingUser = await User.findOne({ user_id })
             .populate("referredBy")
             .populate("tasks")
-            .select("-_id");
         if (!existingUser) {
             const newReferralCode = UserController.generateReferralCode();
             const newUser = await User.create({
@@ -47,15 +46,15 @@ class UserController {
             user = await User.findOne({ user_id: newUser.user_id })
                 .populate("referredBy")
                 .populate("tasks")
-                .select("-_id");
+            console.log("newUser: ", user);
         } else {
             user = existingUser;
         }
-        console.log(user);
-        if (refer_code && !existingUser) {
-            const referrer = await User.findOne({ referral_code: refer_code });
+        console.log("user: ", user);
+        if (referCode && !existingUser) {
+            const referrer = await User.findOne({ referral_code: referCode });
             if (referrer) {
-                console.log(referrer);
+                console.log("referrer: ", referrer);
                 await UserController.processReferral(user, referrer);
             }
         }
@@ -90,49 +89,60 @@ class UserController {
     }
 
     static async processReferral(newUser: UserDocument, referrer: UserDocument) {
+        if (!newUser._id) {
+            console.error("New user does not have an ID.");
+            return;
+        }
         if (newUser.referredBy) return;
 
-        const referralChain: UserDocument[] = [];
-        let currentReferrer: UserDocument | null = referrer;
+        try {
+            const referralChain: UserDocument[] = [];
+            let currentReferrer: UserDocument | null = referrer;
 
-        while (
-            currentReferrer &&
-            referralChain.length < currentReferrer.maxReferralDepth
-        ) {
-            referralChain.push(currentReferrer);
-            currentReferrer = await User.findById(currentReferrer.referredBy);
-        }
+            while (
+                currentReferrer &&
+                referralChain.length < currentReferrer.maxReferralDepth
+            ) {
+                referralChain.push(currentReferrer);
+                currentReferrer = await User.findById(currentReferrer.referredBy);
+            }
+            console.log("referralChain: ", referralChain.length);
 
-        for (let level = 0; level < referralChain.length; level++) {
-            const points = UserController.calculatePoints(level);
-            referralChain[level].points += points;
-            referralChain[level].level = UserController.calculateRank(
-                referralChain[level].points
-            );
-            referralChain[level].referralCount += 1;
+            for (let level = 0; level < referralChain.length; level++) {
+                const points = UserController.calculatePoints(level);
+                referralChain[level].points += points;
+                referralChain[level].level = UserController.calculateRank(
+                    referralChain[level].points
+                );
+                referralChain[level].referralCount += 1;
+
+                await Activity.create({
+                    user: referralChain[level]._id,
+                    rewarded_by: newUser._id,
+                    type: "REFERRAL",
+                    referral_code: referrer.referral_code,
+                    points,
+                });
+
+                await referralChain[level].save();
+            }
+
+            newUser.points += 5;
+            newUser.referredBy = referrer._id;
+            await newUser.save();
+
+            const updatedNewUser = await User.findById(newUser._id);
 
             await Activity.create({
-                user: referralChain[level],
-                rewarded_by: newUser,
+                user: updatedNewUser._id,
+                rewarded_by: referrer._id,
                 type: "REFERRAL",
                 referral_code: referrer.referral_code,
-                points,
+                points: 5,
             });
-
-            await referralChain[level].save();
+        } catch (error) {
+            console.log("Activity Creation error:", error);
         }
-
-        newUser.points += 5;
-        newUser.referredBy = referrer;
-        await newUser.save();
-
-        await Activity.create({
-            user: newUser,
-            rewarded_by: referrer,
-            type: "REFERRAL",
-            referral_code: referrer.referral_code,
-            points: 5,
-        });
     }
 
     static calculatePoints(level: number) {
