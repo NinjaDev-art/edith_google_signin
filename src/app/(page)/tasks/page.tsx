@@ -17,6 +17,7 @@ const Tasks = () => {
   const [earned, setEarned] = useState(0);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState('');
+  const [isTweetLoading, setIsTweetLoading] = useState(false);
 
   const twitterFollow = () => {
     setLoading(true)
@@ -81,6 +82,7 @@ const Tasks = () => {
   }
 
   const handleTweet = async (username: string) => {
+    setIsTweetLoading(true);
     const response = await fetch(`${process.env.NEXTAUTH_URL}/api/registerTwitterId`, {
       method: 'POST',
       headers: {
@@ -99,6 +101,7 @@ const Tasks = () => {
     } else {
       setError(data.message);
     }
+    setIsTweetLoading(false);
   }
 
   const closeTweetModal = () => {
@@ -252,7 +255,7 @@ const Tasks = () => {
         </div>
       </div>
       {isOpen && <Modal closeModal={() => setIsOpen(false)} earned={earned} />}
-      {isTweetOpen && <TweetModal closeModal={closeTweetModal} handleTweet={handleTweet} error={error} setError={setError} />}
+      {isTweetOpen && <TweetModal closeModal={closeTweetModal} handleTweet={handleTweet} error={error} setError={setError} isTweetLoading={isTweetLoading} />}
     </main >
   );
 };

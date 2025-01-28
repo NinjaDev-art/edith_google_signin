@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
 import { Dispatch, SetStateAction } from 'react';
 
-const TweetModal = ({ closeModal, handleTweet, error, setError }:
-  { closeModal: () => void, handleTweet: (username: string) => void, error: string, setError: Dispatch<SetStateAction<string>> }
+const LoadingIcon = () => {
+  return (
+    <div className="w-4 h-4 border-2 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
+  );
+}
+
+const TweetModal = ({ closeModal, handleTweet, error, setError, isTweetLoading }:
+  { closeModal: () => void, handleTweet: (username: string) => void, error: string, setError: Dispatch<SetStateAction<string>>, isTweetLoading: boolean }
 ) => {
   const [twitterUsername, setTwitterUsername] = useState('');
 
@@ -47,8 +53,9 @@ const TweetModal = ({ closeModal, handleTweet, error, setError }:
           <button
             onClick={handleNext}
             className="px-4 py-2 bg-[#FFFFFF] text-[#010101] rounded hover:bg-[#FFFFFF1F] hover:text-[#FCFCFC] transition-colors duration-200"
+            disabled={isTweetLoading}
           >
-            Next
+            {isTweetLoading ? <LoadingIcon /> : 'Next'}
           </button>
         </div>
       </div>
