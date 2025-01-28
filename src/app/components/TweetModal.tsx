@@ -2,13 +2,23 @@ import React, { useState } from 'react';
 
 const TweetModal = ({ closeModal, handleTweet }: { closeModal: () => void, handleTweet: (username: string) => void }) => {
   const [twitterUsername, setTwitterUsername] = useState('');
+  const [error, setError] = useState('');
 
   const handleNext = () => {
-    // Handle the next action, e.g., save the username or proceed to the next step
-    console.log('Twitter Username:', twitterUsername);
+    // Regular expression to match a valid Twitter username or URL
+    const usernamePattern = /^@(\w){1,15}$|^(https:\/\/x\.com\/\w{1,15})$/;
+
     if (!twitterUsername) {
-        return;
+      setError('Username cannot be empty.');
+      return;
     }
+
+    if (!usernamePattern.test(twitterUsername)) {
+      setError('Invalid username format. Please use @username or https://x.com/username');
+      return;
+    }
+
+    setError(''); // Clear any previous error
     handleTweet(twitterUsername);
   };
 
@@ -24,6 +34,7 @@ const TweetModal = ({ closeModal, handleTweet }: { closeModal: () => void, handl
           className="w-full p-2 mb-4 border border-[#262626] rounded bg-[#010101] text-[#FCFCFC] focus:outline-none"
           placeholder="@username OR https://x.com/username"
         />
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         <div className="flex justify-end gap-2">
           <button
             onClick={closeModal}
