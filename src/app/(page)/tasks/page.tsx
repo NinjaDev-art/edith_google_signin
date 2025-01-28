@@ -5,13 +5,13 @@ import Modal from "@/app/components/Modal";
 import TweetModal from "@/app/components/TweetModal";
 import { useUser } from "@/app/context/UserContext";
 import Image from "next/image";
-import { Task } from "@/app/lib/interface";
+import { Task, UserActivities } from "@/app/lib/interface";
 
 const Tasks = () => {
   const [typeTask, setTypeTask] = useState<string>("once");
   const [isOpen, setIsOpen] = useState(false);
   const [isTweetOpen, setIsTweetOpen] = useState(false);
-  const { userData, setUserData } = useUser();
+  const { userData, setUserData, setUserActivities } = useUser();
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState<Window | null>(null);
   const [earned, setEarned] = useState(0);
@@ -48,8 +48,13 @@ const Tasks = () => {
         // Handle both 200 and 201 status codes
         if (data.success) {
           setUserData(data.user);
-          setEarned(data.activity.points);
+          setEarned(data.user.points);
           setIsOpen(true);
+          const activities = Array.isArray(data.activity) ? data.activity : [];
+          setUserActivities((prevUserActivity: UserActivities) => ({
+            ...prevUserActivity,
+            activities: activities
+          }));
         } else {
           console.error('Follow check failed:', data)
         }

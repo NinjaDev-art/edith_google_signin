@@ -260,20 +260,32 @@ class UserController {
                 try {
                     loggedInUserId = UserController.extractTwitterId(loggedInUserId);
                     console.log("loggedInUserId", loggedInUserId);
-                    const twitterUrl = `https://api.twitter.com/2/users/by/username/${loggedInUserId}`;
+                    const twitterUrl = `https://api.socialdata.tools/twitter/user/${loggedInUserId}`;
                     const headers = {
-                        "User-Agent": "v2TweetLookupJS",
-                        "authorization": `Bearer ${process.env.BEARER_TOKEN}`
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Accept': 'application/json',
                     }
-                    const params = {
-                        "user.fields": "profile_image_url,name"
-                    }
-                    const response = await axios.get(twitterUrl, { headers, params });
-                    loggedInUserId = response.data.data.id;
+                    const response = await axios.get(twitterUrl, { headers });
+                    loggedInUserId = response.data.id;
                     console.log("loggedInUserId", loggedInUserId);
                 } catch (error) {
                     console.error("Error extracting Twitter ID:", error);
                 }
+            }
+            console.log("loggedInUserId", loggedInUserId);
+            const existingTwitter = await User.findOne({ twitterId: loggedInUserId });
+            if (existingTwitter) {
+                console.log('This twitter is already used');
+                return { error: 'This twitter is already used' };
+            }
+            const existingUser = await User.findOne({ user_id: telegramId });
+            if (!existingUser) {
+                console.log('User is not registered');
+                return { error: 'User is not registered' };
+            }
+            if (existingUser.followStatus) {
+                console.log('User is already followed');
+                return { error: 'User is already followed' };
             }
             console.log("targetUserId", targetUserId);
             const url = `https://api.socialdata.tools/twitter/user/${loggedInUserId}/following/${targetUserId}`;
@@ -287,24 +299,40 @@ class UserController {
                 console.log("response:", response.data);
                 if (response.data.status === 'success' && response.data.is_following) {
                     const task = await Task.findOne({ index: 0 });
+                    if (!task) {
+                        console.error("Task not found");
+                        return { error: 'Task not found' };
+                    }
+                    console.log("task", task);
                     const user = await User.findOneAndUpdate(
                         { user_id: telegramId },
-                        { $set: { followStatus: true, targetId: targetUserId, twitterId: loggedInUserId, tasks: [...task] } }
+                        {
+                            $set: { followStatus: true, targetId: targetUserId, twitterId: loggedInUserId },
+                            $inc: { points: task.points },
+                            $push: { tasks: task }
+                        },
+                        { new: true }
                     );
-                    const activity = await Activity.create({
-                        user: user,
-                        rewarded_by: null,
-                        type: "TASK",
-                        referral_code: null,
-                        points: task.points,
-                    });
+                    await Activity.create(
+                        {
+                            user: user,
+                            rewarded_by: null,
+                            type: "TASK",
+                            referral_code: null,
+                            points: task.points,
+                        }
+                    );
+                    const activities = await Activity.find({ user: user._id })
+                        .populate({ path: "user", select: "-_id user_id" })
+                        .populate({ path: "rewarded_by", select: "-_id user_id" })
+                        .select("-_id");
 
-                    return { success: true, activity: activity, user: user };
+                    return { success: true, activity: activities, user: user };
                 } else {
                     return { error: 'Failed to verify follow status' };
                 }
             } catch (error) {
-                console.error('SocialData API Error:', error);
+                console.log('SocialData API Error:', error);
                 return { error: 'SocialData API error' };
             }
         } catch (error) {

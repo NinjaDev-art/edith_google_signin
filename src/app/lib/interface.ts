@@ -3,6 +3,7 @@ export interface UserContextTypes {
     userData: UserData;
     userActivities: UserActivities;
     setUserData: React.Dispatch<React.SetStateAction<UserData>>;
+    setUserActivities: React.Dispatch<React.SetStateAction<UserActivities>>;
 }
 
 export interface UserProfile {

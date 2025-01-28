@@ -130,7 +130,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     }, []);
 
     return (
-        <UserContext.Provider value={{ userProfile, userData, userActivities, setUserData }}>
+        <UserContext.Provider value={{ userProfile, userData, userActivities, setUserData, setUserActivities }}>
             {children}
         </UserContext.Provider>
     );
