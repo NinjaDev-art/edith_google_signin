@@ -8,7 +8,7 @@ const UserContext = createContext<UserContextTypes | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     let data = {
-        user_id: 6977492118,
+        user_id: 6947417004,
         referCode: "",
         firstName: "John",
         lastName: "Doe",
@@ -106,7 +106,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
                         const activityData = Array.isArray(data.activities) ? data.activities : [];
     
                         const transformedActivities: Activity[] = activityData.map((item: { rewarded_by: { user_id: string }; type: string; referral_code: string; points: number; createdAt: string; }) => ({
-                            rewarded_user_id: item.rewarded_by.user_id,
+                            rewarded_user_id: item.rewarded_by?.user_id,
                             type: item.type,
                             referral_code: item.referral_code,
                             points: item.points,
