@@ -274,7 +274,7 @@ class UserController {
 
             try {
                 const response = await axios.get(url, { headers });
-
+                console.log("response:", response.data);
                 if (response.data.status === 'success' && response.data.is_following) {
                     const task = await Task.findOne({ index: 0 });
                     const user = await User.findOneAndUpdate(
