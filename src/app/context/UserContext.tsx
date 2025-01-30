@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { retrieveLaunchParams } from "@telegram-apps/sdk"
-import { Activity, UserActivities, UserData, UserProfile, UserContextTypes } from "../lib/interface";
+import { Activity, UserActivities, IUserData, UserProfile, UserContextTypes } from "../lib/interface";
 
 const UserContext = createContext<UserContextTypes | undefined>(undefined);
 
@@ -11,7 +11,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         user_id: 6947417004,
         referCode: "",
         firstName: "John",
-        lastName: "Doe",
+        lastName: "",
         username: "johndoe",
         photoUrl: "/images/avatar.png",
     }
@@ -20,7 +20,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         username: "",
         photoUrl: "",
     });
-    const [userData, setUserData] = useState<UserData>({
+    const [userData, setUserData] = useState<IUserData>({
         user_id: '',
         level: 0,
         max: 0,
@@ -30,6 +30,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         targetId: null,
         referCode: null,
         followStatus: false,
+        achieveTasks: [],
         tasks: [],
     });
     const [userActivities, setUserActivities] = useState<UserActivities>({
@@ -84,6 +85,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
                             targetId: data.user.targetId ?? "",
                             followStatus: data.user.followStatus ?? false,
                             referCode: data.user.referral_code ?? "",
+                            achieveTasks: data.user.achieveTasks ?? [],
                             tasks: data.user.tasks ?? [],
                         });
                     }

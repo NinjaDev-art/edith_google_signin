@@ -29,8 +29,7 @@ function userModel() {
         maxReferralDepth: { type: Number, default: 5 },
         createdAt: { type: Date, default: Date.now },
         twitterId: { type: String, default: null },
-        targetId: { type: String, default: null },
-        followStatus: { type: Boolean, default: false },
+        achieveTasks: { type: [Schema.Types.ObjectId], ref: "Task", default: [] },
         tasks: { type: [Schema.Types.ObjectId], ref: "Task", default: [] },
     });
 
@@ -72,9 +71,12 @@ function activitiyModel() {
 function taskModel() {
     const TaskSchema = new Schema({
         title: { type: String, required: true },
-        type: { type: String, enum: ["ONCE", "DAILY"], required: true },
+        type: { type: String, required: true },
         points: { type: Number, required: true },
-        index: { type: Number, required: true },
+        index: { type: String, required: true },
+        method: { type: String, required: true },
+        target: { type: String },
+        createdAt: { type: Date, default: Date.now },
     });
 
     return mongoose.models.Task || mongoose.model('Task', TaskSchema);

@@ -1,0 +1,139 @@
+import React, { useState, useEffect } from 'react';
+import { ITask } from '../lib/interface';
+import LoadingIcon from './LoadingIcon';
+import { v4 as uuidv4 } from 'uuid';
+
+interface TaskModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (task: ITask) => void;
+    taskToEdit?: ITask;
+}
+
+const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, taskToEdit }) => {
+    const [task, setTask] = useState<ITask>({
+        _id: '',
+        title: '',
+        type: 'once',
+        points: 0,
+        index: uuidv4(),
+        method: 'twitter_flow',
+        target: '',
+    });
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        if (taskToEdit) {
+            setTask(taskToEdit);
+        } else {
+            setTask({
+                _id: '',
+                title: '',
+                type: 'once',
+                points: 0,
+                index: uuidv4(),
+                method: 'twitter_flow',
+                target: '',
+            });
+        }
+    }, [taskToEdit]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        setTask((prevTask) => ({
+            ...prevTask,
+            [name]: value,
+        }));
+    };
+
+    const handleSubmit = async () => {
+        setIsLoading(true);
+        await onSave(task);
+        setIsLoading(false);
+        onClose();
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-[#101010] p-8 rounded-xl shadow-lg w-96">
+                <h2 className="text-xl font-semibold text-[#FCFCFC] mb-6">
+                    {taskToEdit ? 'Edit Task' : 'Add Task'}
+                </h2>
+                <label className="block mb-4 text-[#FCFCFC]">
+                    Title
+                    <input
+                        type="text"
+                        name="title"
+                        value={task.title}
+                        onChange={handleChange}
+                        placeholder="Title"
+                        className="mt-2 p-3 w-full bg-[#1A1A1A] text-[#FCFCFC] rounded border border-gray-700"
+                    />
+                </label>
+                <label className="block mb-4 text-[#FCFCFC]">
+                    Type
+                    <select
+                        name="type"
+                        value={task.type}
+                        onChange={handleChange}
+                        className="mt-2 p-3 w-full bg-[#1A1A1A] text-[#FCFCFC] rounded border border-gray-700"
+                    >
+                        <option value="once">Once</option>
+                    </select>
+                </label>
+                <label className="block mb-4 text-[#FCFCFC]">
+                    Points
+                    <input
+                        type="number"
+                        name="points"
+                        value={task.points}
+                        onChange={handleChange}
+                        placeholder="Points"
+                        className="mt-2 p-3 w-full bg-[#1A1A1A] text-[#FCFCFC] rounded border border-gray-700"
+                    />
+                </label>
+                <label className="block mb-4 text-[#FCFCFC]">
+                    Method
+                    <select
+                        name="method"
+                        value={task.method}
+                        onChange={handleChange}
+                        className="mt-2 p-3 w-full bg-[#1A1A1A] text-[#FCFCFC] rounded border border-gray-700"
+                    >
+                        <option value="twitter_flow">Twitter Flow</option>
+                    </select>
+                </label>
+                <label className="block mb-4 text-[#FCFCFC]">
+                    Target
+                    <input
+                        type="text"
+                        name="target"
+                        value={task.target}
+                        onChange={handleChange}
+                        placeholder="Target"
+                        className="mt-2 p-3 w-full bg-[#1A1A1A] text-[#FCFCFC] rounded border border-gray-700"
+                    />
+                </label>
+                <div className="flex justify-end mt-6">
+                    <button
+                        className="mr-3 px-5 py-3 bg-gray-600 text-white rounded hover:bg-gray-700 transition"
+                        onClick={onClose}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        className="px-5 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                        onClick={handleSubmit}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? <LoadingIcon /> : 'Save'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default TaskModal;

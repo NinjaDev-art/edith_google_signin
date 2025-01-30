@@ -1,6 +1,7 @@
 import db from "@/app/database/db";
 import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
+import { ITask } from "./interface";
 const { User, Activity, Level, Task } = db;
 
 // Add this interface before the UserController class
@@ -29,6 +30,7 @@ class UserController {
         const existingUser = await User.findOne({ user_id })
             .populate("referredBy")
             .populate("tasks")
+            .populate("achieveTasks");
         if (!existingUser) {
             const newReferralCode = UserController.generateReferralCode();
             const newUser = await User.create({
@@ -38,9 +40,8 @@ class UserController {
                 level: 0,
                 maxReferralDepth: process.env.MAX_REFERRAL_DEPTH,
                 twitterId: null,
-                targetId: null,
-                followStatus: false,
                 tasks: [],
+                achieveTasks: []
             });
 
             user = await User.findOne({ user_id: newUser.user_id })
@@ -74,10 +75,9 @@ class UserController {
                 points: user.points,
                 activities: activities,
                 twitterId: user.twitterId,
-                targetId: user.targetId,
-                followStatus: user.followStatus,
                 referral_code: user.referral_code,
-                tasks: user.tasks
+                tasks: user.tasks,
+                achieveTasks: user.achieveTasks
             },
             level: {
                 current_level: level[0]?.level_id || 0,
@@ -279,6 +279,7 @@ class UserController {
         if (!user) {
             return { error: 'User is not registered' };
         }
+
         const updatedUser = await User.findOneAndUpdate(
             { user_id: telegramId },
             { $set: { twitterId } },
@@ -287,12 +288,22 @@ class UserController {
         return { success: true, user: updatedUser };
     }
 
-    static async followTarget(data: { targetUserId: string, loggedInUserId: string, telegramId: string }) {
+    static async followTarget(data: { targetUserId: string, loggedInUserId: string, telegramId: string, taskId: string }) {
         try {
-            const { targetUserId, telegramId } = data;
+            const { targetUserId, telegramId, taskId } = data;
             let loggedInUserId = data.loggedInUserId;
             const apiKey = process.env.SOCIALDATA_API_KEY;
             console.log("loggedInUserId", loggedInUserId);
+            const existingUser = await User.findOne({ user_id: telegramId });
+            if (!existingUser) {
+                console.log('User is not registered');
+                return { error: 'User is not registered' };
+            } else {
+                if (existingUser.tasks.includes(taskId)) {
+                    console.log('User is already followed');
+                    return { error: 'User is already followed' };
+                }
+            }
             if (!Number(loggedInUserId)) {
                 try {
                     loggedInUserId = UserController.extractTwitterId(loggedInUserId);
@@ -309,21 +320,6 @@ class UserController {
                     console.error("Error extracting Twitter ID:", error);
                 }
             }
-            console.log("loggedInUserId", loggedInUserId);
-            const existingTwitter = await User.findOne({ twitterId: loggedInUserId });
-            if (existingTwitter.followStatus) {
-                console.log('This twitter is already used');
-                return { error: 'This twitter is already used' };
-            }
-            const existingUser = await User.findOne({ user_id: telegramId });
-            if (!existingUser) {
-                console.log('User is not registered');
-                return { error: 'User is not registered' };
-            }
-            if (existingUser.followStatus) {
-                console.log('User is already followed');
-                return { error: 'User is already followed' };
-            }
             console.log("targetUserId", targetUserId);
             const url = `https://api.socialdata.tools/twitter/user/${loggedInUserId}/following/${targetUserId}`;
             const headers = {
@@ -335,12 +331,11 @@ class UserController {
                 const response = await axios.get(url, { headers });
                 console.log("response:", response.data);
                 if (response.data.status === 'success' && response.data.is_following) {
-                    const task = await Task.findOne({ index: 0 });
+                    const task = await Task.findOne({ _id: taskId });
                     if (!task) {
                         console.error("Task not found");
                         return { error: 'Task not found' };
                     }
-                    console.log("task", task);
                     const user = await User.findOneAndUpdate(
                         { user_id: telegramId },
                         {
@@ -381,6 +376,52 @@ class UserController {
     static async getTasks() {
         const tasks = await Task.find();
         return tasks;
+    }
+
+    static async saveTask(task: ITask) {
+        if (!task._id) {
+            const taskData = {
+                title: task.title,
+                type: task.type!,
+                points: task.points,
+                index: task.index,
+                method: task.method!,
+                target: task.target,
+            }
+            if (!["once", "daily"].includes(taskData.type)) {
+                throw new Error(`Invalid type: ${taskData.type}`);
+            }
+            if (!["twitter_flow"].includes(taskData.method)) {
+                throw new Error(`Invalid method: ${taskData.method}`);
+            }
+            await Task.create(taskData);
+            return UserController.getTasks();
+        } else {
+            await Task.findOneAndUpdate({ _id: task._id }, { $set: task }, { new: true });
+            return UserController.getTasks();
+        }
+    }
+
+    static async deleteTask(id: string) {
+        await Task.findOneAndDelete({ _id: id });
+        return UserController.getTasks();
+    }
+
+    static async achieveTask(taskId: string, telegramId: string) {
+        const task = await Task.findOne({ _id: taskId });
+        if (!task) {
+            return { error: 'Task not found' };
+        }
+        const user = await User.findOneAndUpdate(
+            { user_id: telegramId },
+            {
+                $push: { achieveTasks: task }
+            },
+            { new: true }
+        ).populate("referredBy")
+            .populate("tasks")
+            .populate("achieveTasks");
+        return { success: true, user: user };
     }
 }
 

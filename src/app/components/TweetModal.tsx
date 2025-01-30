@@ -1,11 +1,6 @@
 import React, { useState } from 'react';
 import { Dispatch, SetStateAction } from 'react';
-
-const LoadingIcon = () => {
-  return (
-    <div className="w-4 h-4 border-2 border-t-transparent border-blue-500 rounded-full animate-spin"></div>
-  );
-}
+import LoadingIcon from './LoadingIcon';
 
 const TweetModal = ({ closeModal, handleTweet, error, setError, isTweetLoading }:
   { closeModal: () => void, handleTweet: (username: string) => void, error: string, setError: Dispatch<SetStateAction<string>>, isTweetLoading: boolean }

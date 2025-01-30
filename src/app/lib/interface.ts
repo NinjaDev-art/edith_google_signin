@@ -1,8 +1,8 @@
 export interface UserContextTypes {
     userProfile: UserProfile;
-    userData: UserData;
+    userData: IUserData;
     userActivities: UserActivities;
-    setUserData: React.Dispatch<React.SetStateAction<UserData>>;
+    setUserData: React.Dispatch<React.SetStateAction<IUserData>>;
     setUserActivities: React.Dispatch<React.SetStateAction<UserActivities>>;
 }
 
@@ -12,7 +12,7 @@ export interface UserProfile {
     photoUrl?: string;
 }
 
-export interface UserData {
+export interface IUserData {
     user_id: string;
     level: number;
     max: number;
@@ -22,7 +22,8 @@ export interface UserData {
     targetId: string | null;
     referCode: string | null;
     followStatus: boolean;
-    tasks: Task[];
+    achieveTasks: ITask[];
+    tasks: ITask[];
 }
 
 export interface UserActivities {
@@ -40,10 +41,12 @@ export interface Activity {
     created_at: string;
 }
 
-export interface Task {
+export interface ITask {
     _id: string;
     title: string;
-    type: string;
+    type?: "once" | "daily";
     points: number;
-    index: number;
+    index: string;
+    method: "twitter_flow";
+    target: string;
 }
