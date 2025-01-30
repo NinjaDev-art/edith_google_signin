@@ -38,6 +38,7 @@ const Admin = () => {
                 setError('Invalid username or password');
             }
         } catch (error) {
+            console.log(error);
             setError('Invalid username or password');
         } finally {
             setIsLoading(false);
