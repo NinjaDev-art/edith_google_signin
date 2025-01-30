@@ -84,26 +84,6 @@ const Admin = () => {
         setTaskToEdit(undefined);
     }
 
-    const handleSaveTask = async (task: ITask) => {
-        try {
-            const response = await fetch(`${process.env.NEXTAUTH_URL}/api/userTasks/save`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ task })
-            });
-            const data = await response.json();
-            if (data.success) {
-                setTasks(data.tasks);
-            } else {
-                setError('Failed to save task');
-            }
-        } catch (error) {
-            console.log(error);
-        }
-    }
-
     return (
         <main className="w-full min-h-screen font-aeonik text-[#878787]">
             {
@@ -132,7 +112,7 @@ const Admin = () => {
                             <tbody>
                                 {tasks.map((task) => (
                                     <tr key={task._id} className="bg-[#2A2A2A] hover:bg-[#333333]">
-                                        <td className="p-4">{task.title}</td>
+                                        <td className="p-4">{task.method == 'twitter_follow' ? `Follow ${task.title} on Twitter` : task.title}</td>
                                         <td className="p-4">{task.type}</td>
                                         <td className="p-4">{task.points}</td>
                                         <td className="p-4">{task.method}</td>
@@ -186,7 +166,7 @@ const Admin = () => {
                     </div>
                 )
             }
-            <TaskModal isOpen={isOpen} onClose={handleCloseModal} onSave={handleSaveTask} taskToEdit={taskToEdit} />
+            <TaskModal isOpen={isOpen} onClose={handleCloseModal} setTasks={setTasks} taskToEdit={taskToEdit} />
         </main>
     )
 }

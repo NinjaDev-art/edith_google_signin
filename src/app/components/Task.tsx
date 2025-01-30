@@ -159,7 +159,7 @@ const Task = ({ task, userData, setUserData, setUserActivities, setEarned, setIs
             <div className="bg-gradient-to-b from-[#202020] to-[#272727] p-[1px] rounded-[20px]">
                 <div className="rounded-[19px] bg-[#101010] px-4 py-4 flex items-stretch justify-between" key={task._id}>
                     <div className="flex flex-col justify-between">
-                        <p className="text-[#FFFFFF] text-base font-medium">{task.title}</p>
+                        <p className="text-[#FFFFFF] text-base font-medium">{task.method == 'twitter_follow' ? `Follow ${task.title} on Twitter` : task.title}</p>
                         <div className="flex items-center justify-start gap-1">
                             {
                                 (loading) ? (

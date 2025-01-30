@@ -21,7 +21,7 @@ const LatestActivity = ({ item }: { item: Activity }) => {
         </div>
         <div className="flex flex-col items-start justify-between flex-1">
           <span className="text-base font-medium text-[#FFFFFF]">
-            Referral
+            {item?.type == "REFERRAL" ? "Referral" : "Task"}
           </span>
           <div className="flex items-center justify-start gap-1">
             <p className="text-xs text-[#878787] ">Completed</p>

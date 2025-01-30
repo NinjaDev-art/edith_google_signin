@@ -47,6 +47,6 @@ export interface ITask {
     type?: "once" | "daily";
     points: number;
     index: string;
-    method: "twitter_flow";
+    method: "twitter_follow";
     target: string;
 }

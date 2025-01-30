@@ -250,6 +250,18 @@ class UserController {
         return loggedInUserId;
     }
 
+    static async fetchTwitterIdfromUsername(username: string) {
+        console.log("username", username);
+        const twitterUrl = `https://api.socialdata.tools/twitter/user/${username}`;
+        const apiKey = process.env.SOCIALDATA_API_KEY;
+        const headers = {
+            'Authorization': `Bearer ${apiKey}`,
+            'Accept': 'application/json',
+        }
+        const response = await axios.get(twitterUrl, { headers });
+        return response.data.id_str;
+    }
+
     static async registerTwitterId(data: { twitterId: string, telegramId: string }) {
         let twitterId = data.twitterId;
         const telegramId = data.telegramId;
@@ -344,7 +356,9 @@ class UserController {
                             $push: { tasks: task }
                         },
                         { new: true }
-                    );
+                    ).populate("achieveTasks")
+                        .populate("referredBy")
+                        .populate("tasks");
                     await Activity.create(
                         {
                             user: user,
@@ -391,14 +405,43 @@ class UserController {
             if (!["once", "daily"].includes(taskData.type)) {
                 throw new Error(`Invalid type: ${taskData.type}`);
             }
-            if (!["twitter_flow"].includes(taskData.method)) {
+            if (!["twitter_follow"].includes(taskData.method)) {
                 throw new Error(`Invalid method: ${taskData.method}`);
             }
-            await Task.create(taskData);
-            return UserController.getTasks();
+            try {
+                const title = UserController.extractTwitterId(taskData.title);
+                taskData.target = await UserController.fetchTwitterIdfromUsername(title);
+                const existingTask = await Task.findOne({ target: taskData.target });
+                if (existingTask) {
+                    throw new Error('This Twitter Task already exists');
+                }
+
+                await Task.create(taskData);
+                return UserController.getTasks();
+            } catch (error) {
+                console.log(error);
+                throw new Error('Failed to save task');
+            }
         } else {
-            await Task.findOneAndUpdate({ _id: task._id }, { $set: task }, { new: true });
-            return UserController.getTasks();
+            try {
+                const existingTask = await Task.findOne({ _id: task._id });
+                if (!existingTask) {
+                    throw new Error('Task not found');
+                }
+                if (existingTask.title != task.title) {
+                    const title = UserController.extractTwitterId(task.title);
+                    task.target = await UserController.fetchTwitterIdfromUsername(title);
+                    const existingTask = await Task.findOne({ target: task.target, _id: { $ne: task._id } });
+                    if (existingTask) {
+                        throw new Error('This Twitter Task already exists');
+                    }
+                }
+                await Task.findOneAndUpdate({ _id: task._id }, { $set: task }, { new: true });
+                return UserController.getTasks();
+            } catch (error) {
+                console.log(error);
+                throw new Error('Failed to update task');
+            }
         }
     }
 

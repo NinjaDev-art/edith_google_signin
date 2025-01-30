@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, SetStateAction, Dispatch } from 'react';
 import { ITask } from '../lib/interface';
 import LoadingIcon from './LoadingIcon';
 import { v4 as uuidv4 } from 'uuid';
@@ -6,21 +6,45 @@ import { v4 as uuidv4 } from 'uuid';
 interface TaskModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (task: ITask) => void;
     taskToEdit?: ITask;
+    setTasks: Dispatch<SetStateAction<ITask[]>>;
 }
 
-const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, taskToEdit }) => {
+const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, taskToEdit, setTasks }) => {
     const [task, setTask] = useState<ITask>({
         _id: '',
         title: '',
         type: 'once',
         points: 0,
         index: uuidv4(),
-        method: 'twitter_flow',
+        method: 'twitter_follow',
         target: '',
     });
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleSaveTask = async (task: ITask) => {
+        try {
+            const response = await fetch(`${process.env.NEXTAUTH_URL}/api/userTasks/save`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ task })
+            });
+            const data = await response.json();
+            if (data.success) {
+                setTasks(data.tasks);
+                onClose();
+            } else {
+                setError('Failed to save task');
+            }
+        } catch (error) {
+            setError('Failed to save task');
+            console.log(error);
+        }
+    }
+
 
     useEffect(() => {
         if (taskToEdit) {
@@ -32,7 +56,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, taskToEd
                 type: 'once',
                 points: 0,
                 index: uuidv4(),
-                method: 'twitter_flow',
+                method: 'twitter_follow',
                 target: '',
             });
         }
@@ -47,10 +71,19 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, taskToEd
     };
 
     const handleSubmit = async () => {
+        if (!task.title || !task.points || task.points <= 1) {
+            setError('Please fill in all fields');
+            return;
+        }
+        const usernamePattern = /^@(\w){1,15}$/;
+        if (!usernamePattern.test(task.title)) {
+            setError('Invalid username format. Please use @username');
+            return;
+        }
+        setError('');
         setIsLoading(true);
-        await onSave(task);
+        await handleSaveTask(task);
         setIsLoading(false);
-        onClose();
     };
 
     if (!isOpen) return null;
@@ -62,18 +95,18 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, taskToEd
                     {taskToEdit ? 'Edit Task' : 'Add Task'}
                 </h2>
                 <label className="block mb-4 text-[#FCFCFC]">
-                    Title
+                    Title*
                     <input
                         type="text"
                         name="title"
                         value={task.title}
                         onChange={handleChange}
-                        placeholder="Title"
+                        placeholder="@username"
                         className="mt-2 p-3 w-full bg-[#1A1A1A] text-[#FCFCFC] rounded border border-gray-700"
                     />
                 </label>
                 <label className="block mb-4 text-[#FCFCFC]">
-                    Type
+                    Type*
                     <select
                         name="type"
                         value={task.type}
@@ -84,7 +117,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, taskToEd
                     </select>
                 </label>
                 <label className="block mb-4 text-[#FCFCFC]">
-                    Points
+                    Points*
                     <input
                         type="number"
                         name="points"
@@ -95,27 +128,17 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, onClose, onSave, taskToEd
                     />
                 </label>
                 <label className="block mb-4 text-[#FCFCFC]">
-                    Method
+                    Method*
                     <select
                         name="method"
                         value={task.method}
                         onChange={handleChange}
                         className="mt-2 p-3 w-full bg-[#1A1A1A] text-[#FCFCFC] rounded border border-gray-700"
                     >
-                        <option value="twitter_flow">Twitter Flow</option>
+                        <option value="twitter_follow">Twitter Follow</option>
                     </select>
                 </label>
-                <label className="block mb-4 text-[#FCFCFC]">
-                    Target
-                    <input
-                        type="text"
-                        name="target"
-                        value={task.target}
-                        onChange={handleChange}
-                        placeholder="Target"
-                        className="mt-2 p-3 w-full bg-[#1A1A1A] text-[#FCFCFC] rounded border border-gray-700"
-                    />
-                </label>
+                {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
                 <div className="flex justify-end mt-6">
                     <button
                         className="mr-3 px-5 py-3 bg-gray-600 text-white rounded hover:bg-gray-700 transition"
