@@ -399,7 +399,7 @@ class UserController {
     }
 
     static async getTasks() {
-        const tasks = await Task.find();
+        const tasks = await Task.find().sort('-createdAt');
         return tasks;
     }
 
