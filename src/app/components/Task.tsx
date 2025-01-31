@@ -21,7 +21,7 @@ const Task = ({ task, userData, setUserData, setUserActivities, setEarned, setIs
 
     const twitterFollow = () => {
         setLoading(true)
-        const followUrl = `https://twitter.com/intent/follow?user_id=${process.env.TWITTER_USER_ID}`
+        const followUrl = `https://twitter.com/intent/follow?user_id=${task.target}`
         achieveTask();
         const newPopup = window.open(followUrl, 'Follow', 'width=600,height=400');
         if (!newPopup) {
