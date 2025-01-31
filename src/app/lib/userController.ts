@@ -47,11 +47,9 @@ class UserController {
             user = await User.findOne({ user_id: newUser.user_id })
                 .populate("referredBy")
                 .populate("tasks")
-            console.log("newUser: ", user);
         } else {
             user = existingUser;
         }
-        console.log("user: ", user);
         if (referCode && !existingUser) {
             const referrer = await User.findOne({ referral_code: referCode });
             if (referrer) {
@@ -348,32 +346,45 @@ class UserController {
                         console.error("Task not found");
                         return { error: 'Task not found' };
                     }
-                    const user = await User.findOneAndUpdate(
-                        { user_id: telegramId },
-                        {
-                            $set: { followStatus: true, targetId: targetUserId, twitterId: loggedInUserId },
-                            $inc: { points: task.points },
-                            $push: { tasks: task }
-                        },
-                        { new: true }
-                    ).populate("achieveTasks")
+                    const existingUser = await User.findOne({ user_id: telegramId })
+                        .populate("achieveTasks")
                         .populate("referredBy")
                         .populate("tasks");
+                    existingUser.followStatus = true;
+                    existingUser.targetId = targetUserId;
+                    existingUser.twitterId = loggedInUserId;
+                    existingUser.points = existingUser.points + task.points;
+                    existingUser.level = UserController.calculateRank(existingUser.points);
+                    existingUser.tasks.push(task);
+                    existingUser.save();
+
                     await Activity.create(
                         {
-                            user: user,
+                            user: existingUser,
                             rewarded_by: null,
                             type: "TASK",
                             referral_code: null,
                             points: task.points,
                         }
                     );
-                    const activities = await Activity.find({ user: user._id })
+
+                    const activities = await Activity.find({ user: existingUser._id })
                         .populate({ path: "user", select: "-_id user_id" })
                         .populate({ path: "rewarded_by", select: "-_id user_id" })
                         .select("-_id");
 
-                    return { success: true, activity: activities, user: user };
+                    const level = await Level.find({ level_id: existingUser.level });
+
+                    return {
+                        success: true, 
+                        activity: activities, 
+                        user: existingUser, 
+                        level: {
+                            current_level: level[0]?.level_id || 0,
+                            min: level[0]?.min || 0,
+                            max: level[0]?.max || 0,
+                        },
+                    };
                 } else {
                     return { error: 'Failed to verify follow status' };
                 }

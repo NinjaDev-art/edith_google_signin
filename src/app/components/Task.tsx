@@ -1,4 +1,4 @@
-import { useState, useEffect, Dispatch, SetStateAction } from "react";
+import { useState, Dispatch, SetStateAction } from "react";
 import { ITask, IUserData, UserActivities, Activity } from "@/app/lib/interface";
 import TweetModal from "@/app/components/TweetModal";
 import Image from "next/image";
@@ -17,13 +17,13 @@ const Task = ({ task, userData, setUserData, setUserActivities, setEarned, setIs
     const [isTweetOpen, setIsTweetOpen] = useState(false);
     const [error, setError] = useState('');
     const [isTweetLoading, setIsTweetLoading] = useState(false);
-    const [popup, setPopup] = useState<Window | null>(null);
-
+    const [, setPopup] = useState<Window | null>(null);
 
     const twitterFollow = () => {
         setLoading(true)
         const followUrl = `https://twitter.com/intent/follow?user_id=${process.env.TWITTER_USER_ID}`
-        const newPopup = window.open(followUrl, 'Follow', 'width=600,height=400')
+        achieveTask();
+        const newPopup = window.open(followUrl, 'Follow', 'width=600,height=400');
         if (!newPopup) {
             setLoading(false)
             alert('Please allow popups to follow on Twitter')
@@ -51,8 +51,13 @@ const Task = ({ task, userData, setUserData, setUserActivities, setEarned, setIs
 
             // Handle both 200 and 201 status codes
             if (data.success) {
-                setUserData(data.user);
-                setEarned(10);
+                setUserData({
+                    ...data.user, 
+                    level: Number(data.level.current_level) ?? 0,
+                    max: Number(data.level.max) ?? 0,
+                    min: Number(data.level.min) ?? 0
+                });
+                setEarned(task.points);
                 setIsOpen(true);
                 const activities = Array.isArray(data.activity) ? data.activity : [];
                 const transformedActivities: Activity[] = activities.map((item: { rewarded_by: { user_id: string }; type: string; referral_code: string; points: number; createdAt: string; }) => ({
@@ -72,7 +77,11 @@ const Task = ({ task, userData, setUserData, setUserActivities, setEarned, setIs
             }
         } catch (err) {
             console.log('Follow check error:', err)
-            twitterLogin();
+            if (userData.tasks.find((task: ITask) => task.method == "twitter_follow")) {
+                twitterFollow();
+            } else {
+                twitterLogin();
+            }
         } finally {
             setLoading(false)
         }
@@ -115,21 +124,23 @@ const Task = ({ task, userData, setUserData, setUserActivities, setEarned, setIs
     const achieveTask = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`${process.env.NEXTAUTH_URL}/api/userTasks/achieveTask`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    taskId: task._id,
-                    telegramId: userData?.user_id
+            if (!userData.achieveTasks.some((t: ITask) => t._id === task._id)) {
+                const response = await fetch(`${process.env.NEXTAUTH_URL}/api/userTasks/achieveTask`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        taskId: task._id,
+                        telegramId: userData?.user_id
+                    })
                 })
-            })
-            const data = await response.json();
-            if (data.success) {
-                setUserData(data.user);
-            } else {
-                throw new Error(data.error);
+                const data = await response.json();
+                if (data.success) {
+                    setUserData(data.user);
+                } else {
+                    throw new Error(data.error);
+                }
             }
         } catch (error) {
             console.log('Achieve task error:', error)
@@ -137,22 +148,6 @@ const Task = ({ task, userData, setUserData, setUserActivities, setEarned, setIs
             setLoading(false)
         }
     }
-
-    useEffect(() => {
-        if (popup) {
-            const handlePopupClose = async () => {
-                await achieveTask();
-            };
-
-            popup.onbeforeunload = handlePopupClose;
-
-            return () => {
-                if (popup) {
-                    popup.onbeforeunload = null;
-                }
-            };
-        }
-    }, [popup])
 
     return (
         <>
